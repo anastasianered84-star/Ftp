@@ -3,8 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
+using Common;
+using Newtonsoft.Json;
 
 namespace Server
 {
@@ -42,6 +45,40 @@ namespace Server
                 }
             }
             return FoldersFiles;
+        }
+        public static void StartServer()
+        {
+            IPEndPoint endPoint = new IPEndPoint(IpAdress, Port);
+            Socket sListener = new Socket(
+                AddressFamily.InterNetwork,
+                SocketType.Stream,
+                ProtocolType.Tcp
+                );
+            sListener.Bind(endPoint);
+            sListener.Listen(10);
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("Сервер запущен.");
+            while (true)
+            {
+                try
+                {
+                    Socket Handler = sListener.Accept();
+                    string Data = null;
+                    byte[] Bytes = new byte[10485760];
+
+                    int BytesRec = Handler.Receive(Bytes);
+                    Data += Encoding.UTF8.GetString(Bytes, 0, BytesRec);
+                    Console.Write("Сообщение от пользователя: " + Data + "\n");
+                    string Reply = "";
+                    ViewModelSend viewModelSend = JsonConvert.DeserializeObject<ViewModelSend>(Data);
+                    if(ViewModelSend != null)
+                    {
+                        ViewModelMessage viewModelMessage;
+                        string[] DataCommand = ViewModelSend.Message 
+                    }
+
+                }
+            }
         }
         static void Main(string[] args)
         {
