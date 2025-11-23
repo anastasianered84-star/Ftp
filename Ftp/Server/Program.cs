@@ -112,8 +112,8 @@ namespace Server
                                             cdFolder += DataMessage[i];
                                         else
                                             cdFolder += " " + DataMessage[i];
-                                    Users[ViewModelSend.Id].temp_src = Users[ViewModelSend.Id].src;
-                                    FoldersFiles = GetDirectory(Users[ViewModelSend.Id].src);
+                                    Users[ViewModelSend.Id].temp_src = Users[ViewModelSend.Id].src + cdFolder;
+                                    FoldersFiles = GetDirectory(Users[ViewModelSend.Id].temp_src);
                                 }
                                 if (FoldersFiles.Count == 0)
                                     viewModelMessage = new ViewModelMessage("message", "Директория пуста или не существует");
@@ -130,7 +130,7 @@ namespace Server
                         {
                             if (ViewModelSend.Id != -1)
                             {
-
+                                 
                                 string[] DataMessage = ViewModelSend.Message.Split(new string[1] { " " }, StringSplitOptions.None);
 
                                 string getFile = "";
@@ -185,9 +185,10 @@ namespace Server
         }
         static void Main(string[] args)
         {
-            Users.Add(new User("aoshchepkov", "Asdfg123", @"A:\Авиатехникум"));
+            Users.Add(new User("Nastya", "Asdfg123", @"C:\Users\GamePC\Desktop\4\Ftp"));
             Console.WriteLine("Введите IP адрес сервера: ");
             string sIpAdress = Console.ReadLine();
+
             Console.Write("Введите порт: ");
             string sPort = Console.ReadLine();
             if (int.TryParse(sPort, out Port) && IPAddress.TryParse(sIpAdress, out IpAdress))

@@ -138,16 +138,20 @@ namespace Client
                         }
                         else if (viewModelMessage.Command == "file")
                         {
-                            string[] DataMessage = viewModelSend.Message.Split(new string[1] { " " }, StringSplitOptions.None);
-                            string getFile = "";
-                            for (int i = 0; i < DataMessage.Length; i++)
-                                if (getFile == "")
-                                    getFile = DataMessage[i];
-                                else
-                                    getFile += " " + DataMessage[i];
-                            byte[] byteFile = JsonConvert.DeserializeObject<byte[]>(viewModelMessage.Data);
-                            File.WriteAllBytes(getFile, byteFile);
-                        }
+                            string[] DataMessage = message.Split(new string[1] { " " }, StringSplitOptions.None);
+
+                            if (DataMessage.Length > 1)
+                            {
+                                string getFile = DataMessage[1]; 
+                                string fileName = Path.GetFileName(getFile);
+
+                                byte[] byteFile = JsonConvert.DeserializeObject<byte[]>(viewModelMessage.Data);
+                                File.WriteAllBytes(fileName, byteFile);
+
+                                Console.ForegroundColor = ConsoleColor.Green;
+                                Console.WriteLine($"Файл {fileName} успешно скачан");
+                            }
+                            }
                     }
                 }
                 else
