@@ -70,14 +70,130 @@ namespace Server
                     Data += Encoding.UTF8.GetString(Bytes, 0, BytesRec);
                     Console.Write("Сообщение от пользователя: " + Data + "\n");
                     string Reply = "";
-                    ViewModelSend viewModelSend = JsonConvert.DeserializeObject<ViewModelSend>(Data);
-                    if(ViewModelSend != null)
+                    ViewModelSend ViewModelSend = JsonConvert.DeserializeObject<ViewModelSend>(Data);
+                    if (ViewModelSend != null)
                     {
                         ViewModelMessage viewModelMessage;
-                        string[] DataCommand = ViewModelSend.Message 
+                        string[] DataCommand = ViewModelSend.Message.Split(new string[1] { " " }, StringSplitOptions.None);
+                        if (DataCommand[0] == "connect")
+                        {
+                            string[] DataMessage = ViewModelSend.Message.Split(new string[1] { " " }, StringSplitOptions.None);
+                            if (Autorization(DataMessage[1], DataMessage[2]))
+                            {
+                                int IdUser = Users.FindIndex(x => x.login == DataMessage[1] && x.password == DataMessage[2]);
+                                viewModelMessage = new ViewModelMessage("autorization", IdUser.ToString());
+                            }
+                            else
+                            {
+                                viewModelMessage = new ViewModelMessage("message", "Не правильный логин и пароль пользователя");
+                            }
+
+                            Reply = JsonConvert.SerializeObject(viewModelMessage);
+                            byte[] message = Encoding.UTF8.GetBytes(Reply);
+                            Handler.Send(message);
+                        }
+                        else if (DataCommand[0] == "cd")
+                        {
+                            if (ViewModelSend.Id != 1)
+                            {
+                                string[] DataMessage = ViewModelSend.Message.Split(new string[1] { " " }, StringSplitOptions.None);
+                                List<string> FoldersFiles = new List<string>();
+
+                                if (DataMessage.Length == 1)
+                                {
+                                    Users[ViewModelSend.Id].temp_src = Users[ViewModelSend.Id].src;
+                                    FoldersFiles = GetDirectory(Users[ViewModelSend.Id].src);
+                                }
+                                else
+                                {
+                                    string cdFolder = "";
+                                    for (int i = 1; i < DataMessage.Length; i++)
+                                        if (cdFolder == "")
+                                            cdFolder += DataMessage[i];
+                                        else
+                                            cdFolder += " " + DataMessage[i];
+                                    Users[ViewModelSend.Id].temp_src = Users[ViewModelSend.Id].src;
+                                    FoldersFiles = GetDirectory(Users[ViewModelSend.Id].src);
+                                }
+                                if (FoldersFiles.Count == 0)
+                                    viewModelMessage = new ViewModelMessage("message", "Директория пуста или не существует");
+                                else
+                                    viewModelMessage = new ViewModelMessage("cd", JsonConvert.SerializeObject(FoldersFiles));
+                            }
+                            else
+                                viewModelMessage = new ViewModelMessage("message", "Необходимо авторизоваться");
+                            Reply = JsonConvert.SerializeObject(viewModelMessage);
+                            byte[] message = Encoding.UTF8.GetBytes(Reply);
+                            Handler.Send(message);
+                        }
+                        else if (DataCommand[0] == "get")
+                        {
+                            if (ViewModelSend.Id != -1)
+                            {
+                                // Разбиваем оставшуюся часть ответа по пробелу, получая наименование файла
+                                // которое хочет получить пользователь
+                                string[] DataMessage = ViewModelSend.Message.Split(new string[1] { " " }, StringSplitOptions.None);
+
+                                // Создаём переменную отвечающую за наименование файла
+                                string getFile = "";
+
+                                // Аналогично с директорией, добавляем пробелы если они есть
+                                for (int i = 1; i < DataMessage.Length; i++)
+                                    if (getFile == "")
+                                        getFile += DataMessage[i];
+                                    else
+                                        getFile += " " + DataMessage[i];
+
+                                // Преобразовываем файл в набор байт
+                                byte[] byteFile = File.ReadAllBytes(Users[ViewModelSend.Id].temp_src + getFile);
+
+                                // Формируем ответ клиенту
+                                viewModelMessage = new ViewModelMessage("file", JsonConvert.SerializeObject(byteFile));
+                            }
+                            else
+                                // В случае неудачи, формируем ответ
+                                viewModelMessage = new ViewModelMessage("message", "Необходимо авторизоваться");
+
+                            // Конвертируем ответ в Json
+                            Reply = JsonConvert.SerializeObject(viewModelMessage);
+
+                            // Разбиваем сообщение от сервера на массив байт
+                            byte[] message = Encoding.UTF8.GetBytes(Reply);
+
+                            // Возвращаем пользователю
+                            Handler.Send(message);
+                        }
+                        else
+                        {
+                            if (ViewModelSend.Id != -1)
+                            {
+                                // Преобразовываем набор байт пришедших от пользователя в объект
+                                FileInfoFTP SendFileInfo = JsonConvert.DeserializeObject<FileInfoFTP>(ViewModelSend.Message);
+                                // Сохраняем файл в директории
+                                File.WriteAllBytes(Users[ViewModelSend.Id].temp_src + @"\" + SendFileInfo.Name, SendFileInfo.Data);
+                                // Формируем ответ
+                                viewModelMessage = new ViewModelMessage("message", "Файл загружен");
+                            }
+                            else
+                                // В случае неудачи, формируем ответ
+                                viewModelMessage = new ViewModelMessage("message", "Необходимо авторизоваться");
+
+                            // Конвертируем ответ в Json
+                            Reply = JsonConvert.SerializeObject(viewModelMessage);
+                            // Разбиваем сообщение от сервера на массив байт
+                            byte[] message = Encoding.UTF8.GetBytes(Reply);
+                            // Возвращаем пользователю
+                            Handler.Send(message);
+                        }
                     }
+                  
 
                 }
+                catch(Exception ex) { 
+                Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("Что то случилось: " + ex.Message);
+                }
+
             }
         }
         static void Main(string[] args)
