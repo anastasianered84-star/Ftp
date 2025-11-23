@@ -130,59 +130,46 @@ namespace Server
                         {
                             if (ViewModelSend.Id != -1)
                             {
-                                // Разбиваем оставшуюся часть ответа по пробелу, получая наименование файла
-                                // которое хочет получить пользователь
+
                                 string[] DataMessage = ViewModelSend.Message.Split(new string[1] { " " }, StringSplitOptions.None);
 
-                                // Создаём переменную отвечающую за наименование файла
                                 string getFile = "";
 
-                                // Аналогично с директорией, добавляем пробелы если они есть
+                              
                                 for (int i = 1; i < DataMessage.Length; i++)
                                     if (getFile == "")
                                         getFile += DataMessage[i];
                                     else
                                         getFile += " " + DataMessage[i];
 
-                                // Преобразовываем файл в набор байт
                                 byte[] byteFile = File.ReadAllBytes(Users[ViewModelSend.Id].temp_src + getFile);
-
-                                // Формируем ответ клиенту
                                 viewModelMessage = new ViewModelMessage("file", JsonConvert.SerializeObject(byteFile));
                             }
                             else
-                                // В случае неудачи, формируем ответ
                                 viewModelMessage = new ViewModelMessage("message", "Необходимо авторизоваться");
-
-                            // Конвертируем ответ в Json
                             Reply = JsonConvert.SerializeObject(viewModelMessage);
-
-                            // Разбиваем сообщение от сервера на массив байт
                             byte[] message = Encoding.UTF8.GetBytes(Reply);
-
-                            // Возвращаем пользователю
                             Handler.Send(message);
                         }
                         else
                         {
                             if (ViewModelSend.Id != -1)
                             {
-                                // Преобразовываем набор байт пришедших от пользователя в объект
                                 FileInfoFTP SendFileInfo = JsonConvert.DeserializeObject<FileInfoFTP>(ViewModelSend.Message);
-                                // Сохраняем файл в директории
+                             
                                 File.WriteAllBytes(Users[ViewModelSend.Id].temp_src + @"\" + SendFileInfo.Name, SendFileInfo.Data);
-                                // Формируем ответ
+                             
                                 viewModelMessage = new ViewModelMessage("message", "Файл загружен");
                             }
                             else
-                                // В случае неудачи, формируем ответ
+                               
                                 viewModelMessage = new ViewModelMessage("message", "Необходимо авторизоваться");
 
-                            // Конвертируем ответ в Json
+                           
                             Reply = JsonConvert.SerializeObject(viewModelMessage);
-                            // Разбиваем сообщение от сервера на массив байт
+                         
                             byte[] message = Encoding.UTF8.GetBytes(Reply);
-                            // Возвращаем пользователю
+                          
                             Handler.Send(message);
                         }
                     }
@@ -198,6 +185,19 @@ namespace Server
         }
         static void Main(string[] args)
         {
+            Users.Add(new User("aoshchepkov", "Asdfg123", @"A:\Авиатехникум"));
+            Console.WriteLine("Введите IP адрес сервера: ");
+            string sIpAdress = Console.ReadLine();
+            Console.Write("Введите порт: ");
+            string sPort = Console.ReadLine();
+            if (int.TryParse(sPort, out Port) && IPAddress.TryParse(sIpAdress, out IpAdress))
+            {
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("Данные успешно введены. Запускаю сервер.");
+                StartServer();
+            }
+
+            Console.Read();
         }
     }
 }
