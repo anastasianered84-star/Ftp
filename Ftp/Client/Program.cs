@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -13,51 +14,71 @@ namespace Client
 {
     internal class Program
     {
-        private IPAddress ipAddress;
-        private int port;
-        private int userId = -1;
+        public static IPAddress IpAdress;
+        public static int Port;
+        public static int Id = -1;
         static void Main(string[] args)
         {
-
+            Console.Write("ВВедите IP адрес сервера: ");
+            string sIpAdress = Console.ReadLine();
+            Console.Write("ВВедите порт: ");
+            string sPort = Console.ReadLine();
+            if (int.TryParse(sPort, out Port) && IPAddress.TryParse(sIpAdress, out IpAdress))
+            {
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("Данные успешно введены. Подключаюсь к серверу.");
+                while (true)
+                {
+                    ConnectServer();
+                }
+            }
         }
         public static bool CheckCommand(string message)
         {
             bool BCommand = false;
-            string[] DataMessage = message.Split(new string[1](" "), StringSplitOptions.None);
+
+            string[] DataMessage = message.Split(new string[1] { " " },StringSplitOptions.None);
+
             if (DataMessage.Length > 0)
             {
                 string Command = DataMessage[0];
                 if (Command == "connect")
                 {
+                    if (DataMessage.Length != 3)
+                    { 
                     Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("");
+                        Console.WriteLine("Использование: connect [login] [password]\nПример: connect User1 P@ssw0rd");
                     BCommand = false;
-                }
-            }
-            else if (Command == "cd")
-                BCommand = true;
-            else if (Command == "get")
-            {
-                if (DataMessage.Length == 1)
-                {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("");
-                    BCommand = false;
-                }
+                    }
                 else
                     BCommand = true;
-            }
-            else if (Command == "set")
-            {
-                if (DataMessage.Length == 1)
-                {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("");
-                    BCommand = false;
                 }
-                else
+                else if (Command == "cd")
                     BCommand = true;
+                else if (Command == "get")
+                {
+                    if (DataMessage.Length == 1)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine("");
+                        BCommand = false;
+                    }
+                    else
+                        BCommand = true;
+                }
+                else if (Command == "set")
+                {
+                    if (DataMessage.Length == 1)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine("Использование: get [NameFile]\nПример: get Test.txt");
+                        BCommand = false;
+                    }
+                    else
+                        BCommand = true;
+                }
             }
+            return BCommand;
         }
         public static void ConnectServer()
         {
@@ -140,7 +161,7 @@ namespace Client
             {
                 Console.ForegroundColor = ConsoleColor.Red;
 
-                Console.WriteLine( "что то случилось: " + exp.Message);
+                Console.WriteLine( "что то случилось: " + ex.Message);
             }
         }
 
