@@ -14,6 +14,7 @@ namespace Common
         {
             this.Message = message;
             this.Id = Id;
+
         }
     }
 }
