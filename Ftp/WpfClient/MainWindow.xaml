@@ -63,8 +63,6 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-
-        <!-- Панель подключения -->
         <GroupBox Grid.Row="0" Header="Подключение к серверу" Margin="16,12,16,8">
             <StackPanel Orientation="Horizontal" Margin="8">
                 <StackPanel Orientation="Horizontal">
@@ -95,25 +93,17 @@
                 </StackPanel>
             </StackPanel>
         </GroupBox>
-
-        <!-- Список файлов и папок -->
         <GroupBox Grid.Row="1" Header="Файлы и папки" Margin="16,8">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-
-                <!-- Панель навигации -->
                 <Border Grid.Row="0" Background="#F7FAFC" BorderBrush="#E2E8F0" BorderThickness="0,0,0,1" Padding="12,8">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock x:Name="txtCurrentPath" Text="Текущий путь: " FontWeight="SemiBold" VerticalAlignment="Center"/>
-                        <Button x:Name="btnRefresh" Content="🔄" Click="btnRefresh_Click" 
-                                Style="{StaticResource IconButtonStyle}" Margin="12,0,0,0" ToolTip="Обновить"/>
                     </StackPanel>
                 </Border>
-
-                <!-- Список файлов -->
                 <ListView x:Name="lstFiles" Grid.Row="1" MouseDoubleClick="lstFiles_MouseDoubleClick"
                           ScrollViewer.VerticalScrollBarVisibility="Auto">
                     <ListView.View>
@@ -133,13 +123,7 @@
                             </GridViewColumn>
                             <GridViewColumn Header="Полное имя" Width="280" DisplayMemberBinding="{Binding FullName}"/>
                             <GridViewColumn Header="Тип" Width="120" DisplayMemberBinding="{Binding Type}"/>
-                            <GridViewColumn Header="Размер" Width="100">
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding Size}" HorizontalAlignment="Right" Margin="0,0,12,0"/>
-                                    </DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
+
                         </GridView>
                     </ListView.View>
 
@@ -161,22 +145,14 @@
                 </ListView>
             </Grid>
         </GroupBox>
-
-        <!-- Панель управления файлами -->
         <GroupBox Grid.Row="2" Header="Управление файлами" Margin="16,8">
             <StackPanel Orientation="Horizontal" Margin="8">
                 <Button Style="{StaticResource PrimaryButtonStyle}" x:Name="btnUpload" 
                         Content="📤 Загрузить файл" Click="btnUpload_Click" Margin="4" Padding="16,8"/>
                 <Button Style="{StaticResource PrimaryButtonStyle}" x:Name="btnDownload" 
                         Content="📥 Скачать файл" Click="btnDownload_Click" Margin="4" Padding="16,8"/>
-                <Button Style="{StaticResource TextButtonStyle}" x:Name="btnCreateFolder" 
-                        Content="📁 Создать папку" Margin="4" Padding="16,8"/>
-                <Button Style="{StaticResource TextButtonStyle}" x:Name="btnDelete" 
-                        Content="🗑️ Удалить" Margin="4" Padding="16,8" Foreground="#E53E3E"/>
             </StackPanel>
         </GroupBox>
-
-        <!-- Статусная строка -->
         <StatusBar Grid.Row="3">
             <StatusBarItem>
                 <TextBlock x:Name="txtStatus" Text="Не подключено" FontWeight="SemiBold"/>
