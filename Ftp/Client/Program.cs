@@ -101,11 +101,12 @@ namespace Client
                         {
                             string[] DataMessage = message.Split(new string[1] { " " }, StringSplitOptions.None);
                             string NameFile = "";
-                            for (int i = 0; i < DataMessage.Length; i++)
+                            for (int i = 1; i < DataMessage.Length; i++)
                                 if (NameFile == "")
                                     NameFile += DataMessage[i];
                                 else
                                     NameFile += " " + DataMessage[i];
+
                             if (File.Exists(NameFile))
                             {
                                 FileInfo FileInfo = new FileInfo(NameFile);

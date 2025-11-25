@@ -177,7 +177,7 @@ namespace Server
 
                 }
                 catch(Exception ex) { 
-                Console.ForegroundColor = ConsoleColor.Red;
+                    Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine("Что то случилось: " + ex.Message);
                 }
 
@@ -185,7 +185,7 @@ namespace Server
         }
         static void Main(string[] args)
         {
-            Users.Add(new User("Nastya", "Asdfg123", @"C:\Users\GamePC\Desktop\4\Ftp"));
+            Users.Add(new User("Nastya", "Asdfg123", @"C:\Users\student-a502.PERMAVIAT\source\repos\Ftp"));
             Console.WriteLine("Введите IP адрес сервера: ");
             string sIpAdress = Console.ReadLine();
 
