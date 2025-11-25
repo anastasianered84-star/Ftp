@@ -1,0 +1,189 @@
+﻿<Window x:Class="WpfClient.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:WpfClient"
+        mc:Ignorable="d"
+        Title="Файловый клиент" Height="600" Width="1000"
+        WindowStartupLocation="CenterScreen"
+        Background="#F8F9FA">
+
+    <Window.Resources>
+        <Style TargetType="GroupBox">
+            <Setter Property="BorderBrush" Value="#E1E5E9"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="#2D3748"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="12,8"/>
+        </Style>
+
+        <Style TargetType="TextBox">
+            <Setter Property="BorderBrush" Value="#E1E5E9"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="#2D3748"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+
+        <Style TargetType="PasswordBox">
+            <Setter Property="BorderBrush" Value="#E1E5E9"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="#2D3748"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#4A5568"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style TargetType="ListView">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+
+        <Style TargetType="StatusBar">
+            <Setter Property="Background" Value="#2D3748"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Панель подключения -->
+        <GroupBox Grid.Row="0" Header="Подключение к серверу" Margin="16,12,16,8">
+            <StackPanel Orientation="Horizontal" Margin="8">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="IP адрес:" Margin="8,0,4,0" FontWeight="SemiBold"/>
+                    <TextBox x:Name="txtIp" Text="127.0.0.1" Width="100" Margin="4"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Margin="12,0,0,0">
+                    <TextBlock Text="Порт:" Margin="8,0,4,0" FontWeight="SemiBold"/>
+                    <TextBox x:Name="txtPort" Text="8080" Width="60" Margin="4"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Margin="12,0,0,0">
+                    <TextBlock Text="Логин:" Margin="8,0,4,0" FontWeight="SemiBold"/>
+                    <TextBox x:Name="txtLogin" Width="100" Margin="4"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Margin="12,0,0,0">
+                    <TextBlock Text="Пароль:" Margin="8,0,4,0" FontWeight="SemiBold"/>
+                    <PasswordBox x:Name="txtPassword" Width="100" Margin="4"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Margin="16,0,0,0">
+                    <Button x:Name="btnConnect" Content="Подключиться" Click="btnConnect_Click"  
+                            Style="{StaticResource PrimaryButtonStyle}" Margin="4" Padding="16,8"/>
+                    <Button x:Name="btnDisconnect" Content="Отключиться" Click="btnDisconnect_Click" 
+                            Style="{StaticResource TextButtonStyle}" Margin="4" Padding="16,8" IsEnabled="False"/>
+                </StackPanel>
+            </StackPanel>
+        </GroupBox>
+
+        <!-- Список файлов и папок -->
+        <GroupBox Grid.Row="1" Header="Файлы и папки" Margin="16,8">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Панель навигации -->
+                <Border Grid.Row="0" Background="#F7FAFC" BorderBrush="#E2E8F0" BorderThickness="0,0,0,1" Padding="12,8">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock x:Name="txtCurrentPath" Text="Текущий путь: " FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        <Button x:Name="btnRefresh" Content="🔄" Click="btnRefresh_Click" 
+                                Style="{StaticResource IconButtonStyle}" Margin="12,0,0,0" ToolTip="Обновить"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Список файлов -->
+                <ListView x:Name="lstFiles" Grid.Row="1" MouseDoubleClick="lstFiles_MouseDoubleClick"
+                          ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Имя" Width="300">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Margin="4,2">
+                                            <TextBlock Text="{Binding Type}" Margin="0,0,8,0" 
+                                                       FontFamily="Segoe UI Symbol" FontSize="12" 
+                                                       VerticalAlignment="Center" Foreground="#718096"/>
+                                            <TextBlock Text="{Binding Name}" VerticalAlignment="Center" 
+                                                       TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                            <GridViewColumn Header="Полное имя" Width="280" DisplayMemberBinding="{Binding FullName}"/>
+                            <GridViewColumn Header="Тип" Width="120" DisplayMemberBinding="{Binding Type}"/>
+                            <GridViewColumn Header="Размер" Width="100">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Size}" HorizontalAlignment="Right" Margin="0,0,12,0"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                        </GridView>
+                    </ListView.View>
+
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="Padding" Value="8,6"/>
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#EDF2F7"/>
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter Property="Background" Value="#E2E8F0"/>
+                                    <Setter Property="Foreground" Value="#2D3748"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                </ListView>
+            </Grid>
+        </GroupBox>
+
+        <!-- Панель управления файлами -->
+        <GroupBox Grid.Row="2" Header="Управление файлами" Margin="16,8">
+            <StackPanel Orientation="Horizontal" Margin="8">
+                <Button Style="{StaticResource PrimaryButtonStyle}" x:Name="btnUpload" 
+                        Content="📤 Загрузить файл" Click="btnUpload_Click" Margin="4" Padding="16,8"/>
+                <Button Style="{StaticResource PrimaryButtonStyle}" x:Name="btnDownload" 
+                        Content="📥 Скачать файл" Click="btnDownload_Click" Margin="4" Padding="16,8"/>
+                <Button Style="{StaticResource TextButtonStyle}" x:Name="btnCreateFolder" 
+                        Content="📁 Создать папку" Margin="4" Padding="16,8"/>
+                <Button Style="{StaticResource TextButtonStyle}" x:Name="btnDelete" 
+                        Content="🗑️ Удалить" Margin="4" Padding="16,8" Foreground="#E53E3E"/>
+            </StackPanel>
+        </GroupBox>
+
+        <!-- Статусная строка -->
+        <StatusBar Grid.Row="3">
+            <StatusBarItem>
+                <TextBlock x:Name="txtStatus" Text="Не подключено" FontWeight="SemiBold"/>
+            </StatusBarItem>
+            <StatusBarItem HorizontalAlignment="Right">
+                <TextBlock x:Name="txtConnectionInfo" Text="Готов к работе" FontStyle="Italic"/>
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</Window>
