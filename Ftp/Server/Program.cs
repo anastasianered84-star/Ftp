@@ -28,19 +28,36 @@ namespace Server
 
             if (Directory.Exists(src))
             {
-                string[] dirs = Directory.GetDirectories(src);
-                foreach (string dir in dirs)
+                try
                 {
-                    string NameDirectory = dir.Replace(src, "");
-                    FoldersFiles.Add(NameDirectory + "/");
-                }
+                    string[] dirs = Directory.GetDirectories(src);
+                    foreach (string dir in dirs)
+                    {
+                        string dirName = Path.GetFileName(dir);
+                        if (!string.IsNullOrEmpty(dirName))
+                        {
+                            FoldersFiles.Add(dirName + "/");
+                        }
+                    }
 
-                string[] files = Directory.GetFiles(src);
-                foreach (string file in files)
-                {
-                    string NameFile = file.Replace(src, "");
-                    FoldersFiles.Add(NameFile);
+                    string[] files = Directory.GetFiles(src);
+                    foreach (string file in files)
+                    {
+                        string fileName = Path.GetFileName(file);
+                        if (!string.IsNullOrEmpty(fileName))
+                        {
+                            FoldersFiles.Add(fileName);
+                        }
+                    }
                 }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Ошибка чтения директории {src}: {ex.Message}");
+                }
+            }
+            else
+            {
+                Console.WriteLine($"Директория не существует: {src}");
             }
             return FoldersFiles;
         }
@@ -78,6 +95,7 @@ namespace Server
                         ViewModelMessage viewModelMessage;
                         string[] DataCommand = ViewModelSend.Message.Split(new string[1] { " " }, StringSplitOptions.None);
                         string command = DataCommand[0];
+                        byte[] responseBytes;
 
                         if (command == "connect")
                         {
@@ -95,59 +113,138 @@ namespace Server
                             }
 
                             Reply = JsonConvert.SerializeObject(viewModelMessage);
-                            byte[] message = Encoding.UTF8.GetBytes(Reply);
-                            Handler.Send(message);
+                            responseBytes = Encoding.UTF8.GetBytes(Reply);
+                            Handler.Send(responseBytes);
                         }
                         else if (command == "cd")
                         {
-                            User user = DatabaseHelper.GetUserById(ViewModelSend.Id);
-                            if (user != null)
+                            if (ViewModelSend.Id == -1)
                             {
-                                string[] DataMessage = ViewModelSend.Message.Split(new string[1] { " " }, StringSplitOptions.None);
-                                List<string> FoldersFiles = new List<string>();
-                                string cdFolder = "";
+                                viewModelMessage = new ViewModelMessage("message", "Необходимо авторизоваться");
+                                Reply = JsonConvert.SerializeObject(viewModelMessage);
+                                responseBytes = Encoding.UTF8.GetBytes(Reply);
+                                Handler.Send(responseBytes);
+                                continue;
+                            }
 
-                                if (DataMessage.Length == 1)
-                                {
-                                    user.temp_src = user.src;
-                                    FoldersFiles = GetDirectory(user.src);
-                                }
-                                else
-                                {
-                                    for (int i = 1; i < DataMessage.Length; i++)
-                                        if (cdFolder == "")
-                                            cdFolder += DataMessage[i];
-                                        else
-                                            cdFolder += " " + DataMessage[i];
-                                    user.temp_src = user.src + cdFolder;
-                                    FoldersFiles = GetDirectory(user.temp_src);
-                                }
+                            string currentPath = DatabaseHelper.GetUserCurrentPath(ViewModelSend.Id);
+                            string userRoot = DatabaseHelper.GetUserById(ViewModelSend.Id).src;
+                            string[] DataMessage = ViewModelSend.Message.Split(new string[1] { " " }, StringSplitOptions.None);
+                            List<string> FoldersFiles = new List<string>();
+                            string cdFolder = "";
 
-                                if (FoldersFiles.Count == 0)
-                                {
-                                    viewModelMessage = new ViewModelMessage("message", "Директория пуста или не существует");
-                                    DatabaseHelper.LogCommand(user.Id, "cd", cdFolder, "failed");
-                                }
-                                else
-                                {
-                                    viewModelMessage = new ViewModelMessage("cd", JsonConvert.SerializeObject(FoldersFiles));
-                                    DatabaseHelper.LogCommand(user.Id, "cd", cdFolder, "success");
-                                }
+                            if (DataMessage.Length == 1)
+                            {
+                                currentPath = userRoot;
+                                DatabaseHelper.SetUserCurrentPath(ViewModelSend.Id, currentPath);
+                                FoldersFiles = GetDirectory(currentPath);
                             }
                             else
                             {
-                                viewModelMessage = new ViewModelMessage("message", "Необходимо авторизоваться");
+                                for (int i = 1; i < DataMessage.Length; i++)
+                                    if (cdFolder == "")
+                                        cdFolder += DataMessage[i];
+                                    else
+                                        cdFolder += " " + DataMessage[i];
+
+                                string newPath;
+                                if (cdFolder == "..")
+                                {
+                                    if (string.Equals(currentPath, userRoot, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        viewModelMessage = new ViewModelMessage("message", "Вы уже в корневой директории");
+                                        Reply = JsonConvert.SerializeObject(viewModelMessage);
+                                        responseBytes = Encoding.UTF8.GetBytes(Reply);
+                                        Handler.Send(responseBytes);
+                                        continue;
+                                    }
+
+                                    DirectoryInfo parentDir = Directory.GetParent(currentPath);
+                                    if (parentDir != null)
+                                    {
+                                        newPath = parentDir.FullName;
+                                        if (!newPath.StartsWith(userRoot, StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            newPath = userRoot; 
+                                        }
+                                    }
+                                    else
+                                    {
+                                        newPath = userRoot; 
+                                    }
+
+                                    Console.WriteLine($"Переход на уровень выше: {currentPath} -> {newPath}");
+                                }
+                                else
+                                {
+                                    newPath = Path.Combine(currentPath, cdFolder);
+                                    Console.WriteLine($"Переход в папку: {currentPath} + {cdFolder} = {newPath}");
+                                }
+
+                                newPath = Path.GetFullPath(newPath);
+                                if (!DatabaseHelper.IsPathAllowed(ViewModelSend.Id, newPath))
+                                {
+                                    Console.WriteLine($"Доступ запрещен: {newPath} не находится в {userRoot}");
+                                    viewModelMessage = new ViewModelMessage("message", "Доступ запрещен: выход за пределы корневой директории");
+                                    Reply = JsonConvert.SerializeObject(viewModelMessage);
+                                    responseBytes = Encoding.UTF8.GetBytes(Reply);
+                                    Handler.Send(responseBytes);
+                                    continue;
+                                }
+                                if (!Directory.Exists(newPath))
+                                {
+                                    viewModelMessage = new ViewModelMessage("message", "Директория не существует");
+                                    Reply = JsonConvert.SerializeObject(viewModelMessage);
+                                    responseBytes = Encoding.UTF8.GetBytes(Reply);
+                                    Handler.Send(responseBytes);
+                                    continue;
+                                }
+
+                                currentPath = newPath;
+                                DatabaseHelper.SetUserCurrentPath(ViewModelSend.Id, currentPath);
+                                FoldersFiles = GetDirectory(currentPath);
+                            }
+
+                            if (FoldersFiles.Count == 0)
+                            {
+                                viewModelMessage = new ViewModelMessage("message", "Директория пуста");
+                                DatabaseHelper.LogCommand(ViewModelSend.Id, "cd", cdFolder, "success");
+                            }
+                            else
+                            {
+                                viewModelMessage = new ViewModelMessage("cd", JsonConvert.SerializeObject(FoldersFiles));
+                                DatabaseHelper.LogCommand(ViewModelSend.Id, "cd", cdFolder, "success");
                             }
 
                             Reply = JsonConvert.SerializeObject(viewModelMessage);
-                            byte[] message = Encoding.UTF8.GetBytes(Reply);
-                            Handler.Send(message);
+                            responseBytes = Encoding.UTF8.GetBytes(Reply);
+                            Handler.Send(responseBytes);
+                        }
+                        else if (command == "pwd") 
+                        {
+                            if (ViewModelSend.Id == -1)
+                            {
+                                viewModelMessage = new ViewModelMessage("message", "Необходимо авторизоваться");
+                            }
+                            else
+                            {
+                                string relativePath = DatabaseHelper.GetRelativePath(ViewModelSend.Id);
+                                viewModelMessage = new ViewModelMessage("path", relativePath);
+                            }
+
+                            Reply = JsonConvert.SerializeObject(viewModelMessage);
+                            responseBytes = Encoding.UTF8.GetBytes(Reply);
+                            Handler.Send(responseBytes);
                         }
                         else if (command == "get")
                         {
-                            User user = DatabaseHelper.GetUserById(ViewModelSend.Id);
-                            if (user != null)
+                            if (ViewModelSend.Id == -1)
                             {
+                                viewModelMessage = new ViewModelMessage("message", "Необходимо авторизоваться");
+                            }
+                            else
+                            {
+                                string currentPath = DatabaseHelper.GetUserCurrentPath(ViewModelSend.Id);
                                 string[] DataMessage = ViewModelSend.Message.Split(new string[1] { " " }, StringSplitOptions.None);
                                 string getFile = "";
 
@@ -157,48 +254,76 @@ namespace Server
                                     else
                                         getFile += " " + DataMessage[i];
 
-                                string filePath = user.temp_src + getFile;
-                                if (File.Exists(filePath))
+                                // Убираем начальный слеш если есть
+                                if (getFile.StartsWith("/") || getFile.StartsWith("\\"))
+                                    getFile = getFile.Substring(1);
+
+                                string filePath = Path.Combine(currentPath, getFile);
+                                filePath = Path.GetFullPath(filePath);
+
+                                Console.WriteLine($"Попытка скачать файл: {filePath}");
+                                Console.WriteLine($"Текущий путь: {currentPath}");
+                                Console.WriteLine($"Запрошенный файл: {getFile}");
+
+                                if (!DatabaseHelper.IsPathAllowed(ViewModelSend.Id, filePath))
                                 {
-                                    byte[] byteFile = File.ReadAllBytes(filePath);
-                                    viewModelMessage = new ViewModelMessage("file", JsonConvert.SerializeObject(byteFile));
-                                    DatabaseHelper.LogCommand(user.Id, "get", getFile, "success");
+                                    Console.WriteLine($"Доступ запрещен: {filePath} не находится в {DatabaseHelper.GetUserById(ViewModelSend.Id).src}");
+                                    viewModelMessage = new ViewModelMessage("message", "Доступ запрещен: файл вне корневой директории");
+                                }
+                                else if (File.Exists(filePath))
+                                {
+                                    try
+                                    {
+                                        byte[] byteFile = File.ReadAllBytes(filePath);
+                                        viewModelMessage = new ViewModelMessage("file", JsonConvert.SerializeObject(byteFile));
+                                        DatabaseHelper.LogCommand(ViewModelSend.Id, "get", getFile, "success");
+                                        Console.WriteLine($"Файл {filePath} успешно прочитан, размер: {byteFile.Length} байт");
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Console.WriteLine($"Ошибка чтения файла: {ex.Message}");
+                                        viewModelMessage = new ViewModelMessage("message", $"Ошибка чтения файла: {ex.Message}");
+                                    }
                                 }
                                 else
                                 {
+                                    Console.WriteLine($"Файл не существует: {filePath}");
                                     viewModelMessage = new ViewModelMessage("message", "Файл не существует");
-                                    DatabaseHelper.LogCommand(user.Id, "get", getFile, "failed");
+                                    DatabaseHelper.LogCommand(ViewModelSend.Id, "get", getFile, "failed");
                                 }
                             }
-                            else
-                            {
-                                viewModelMessage = new ViewModelMessage("message", "Необходимо авторизоваться");
-                            }
 
                             Reply = JsonConvert.SerializeObject(viewModelMessage);
-                            byte[] message = Encoding.UTF8.GetBytes(Reply);
-                            Handler.Send(message);
+                            responseBytes = Encoding.UTF8.GetBytes(Reply);
+                            Handler.Send(responseBytes);
                         }
-                        else
+                        else 
                         {
-                            User user = DatabaseHelper.GetUserById(ViewModelSend.Id);
-                            if (user != null)
-                            {
-                                FileInfoFTP SendFileInfo = JsonConvert.DeserializeObject<FileInfoFTP>(ViewModelSend.Message);
-                                string filePath = Path.Combine(user.temp_src, SendFileInfo.Name);
-
-                                File.WriteAllBytes(filePath, SendFileInfo.Data);
-                                viewModelMessage = new ViewModelMessage("message", "Файл загружен");
-                                DatabaseHelper.LogCommand(user.Id, "set", SendFileInfo.Name, "success");
-                            }
-                            else
+                            if (ViewModelSend.Id == -1)
                             {
                                 viewModelMessage = new ViewModelMessage("message", "Необходимо авторизоваться");
                             }
+                            else
+                            {
+                                string currentPath = DatabaseHelper.GetUserCurrentPath(ViewModelSend.Id);
+                                FileInfoFTP SendFileInfo = JsonConvert.DeserializeObject<FileInfoFTP>(ViewModelSend.Message);
+                                string filePath = Path.Combine(currentPath, SendFileInfo.Name);
+                                if (!DatabaseHelper.IsPathAllowed(ViewModelSend.Id, filePath))
+                                {
+                                    viewModelMessage = new ViewModelMessage("message", "Доступ запрещен: выход за пределы корневой директории");
+                                }
+                                else
+                                {
+                                    Directory.CreateDirectory(Path.GetDirectoryName(filePath));
+                                    File.WriteAllBytes(filePath, SendFileInfo.Data);
+                                    viewModelMessage = new ViewModelMessage("message", "Файл загружен");
+                                    DatabaseHelper.LogCommand(ViewModelSend.Id, "set", SendFileInfo.Name, "success");
+                                }
+                            }
 
                             Reply = JsonConvert.SerializeObject(viewModelMessage);
-                            byte[] message = Encoding.UTF8.GetBytes(Reply);
-                            Handler.Send(message);
+                            responseBytes = Encoding.UTF8.GetBytes(Reply);
+                            Handler.Send(responseBytes);
                         }
                     }
                 }

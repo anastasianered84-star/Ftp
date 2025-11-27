@@ -117,66 +117,79 @@ namespace WpfClient
                 string command;
                 if (folderName == "..")
                 {
-                    command = "cd";
+                    command = "cd ..";
                 }
                 else
                 {
-
                     var selectedItem = lstFiles.SelectedItem as FileItem;
-                    command = $"cd {selectedItem.FullName}";
+                    if (selectedItem == null) return;
+
+                    command = $"cd {selectedItem.Name}";
                 }
 
                 string response = await SendCommandToServer(command);
 
                 if (response.StartsWith("cd:"))
                 {
-                    if (folderName == "..")
+                    await ParseAndDisplayFiles(response);
+                    UpdateStatus("Директория изменена успешно");
+                }
+                else if (response.StartsWith("message:"))
+                {
+                    string errorMessage = response.Substring(8);
+                    if (errorMessage.Contains("корневой директории") && folderName == "..")
                     {
-                        if (pathHistory.Count > 1)
-                        {
-                            pathHistory.Pop();
-                            currentPath = pathHistory.Peek();
-                        }
+                        await RefreshFileList();
+                        UpdateStatus("Вы в корневой директории");
                     }
                     else
                     {
-                        var selectedItem = lstFiles.SelectedItem as FileItem;
-                        currentPath = Path.Combine(currentPath, selectedItem.FullName).Replace("\\", "/");
-                        pathHistory.Push(currentPath);
+                        MessageBox.Show(errorMessage, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
                     }
-
-                    UpdatePathDisplay();
-                    await ParseAndDisplayFiles(response);
                 }
                 else
                 {
-                    MessageBox.Show("Ошибка смены директории: " + response);
+                    MessageBox.Show("Неизвестный ответ от сервера: " + response, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка: {ex.Message}");
+                MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-
+        private async System.Threading.Tasks.Task UpdateCurrentPath()
+        {
+            try
+            {
+                string response = await SendCommandToServer("cd");
+                if (response.StartsWith("cd:"))
+                {
+                    UpdateStatus("Директория изменена");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка обновления пути: {ex.Message}");
+            }
+        }
         private async void btnDownload_Click(object sender, RoutedEventArgs e)
         {
             var selectedItem = lstFiles.SelectedItem as FileItem;
             if (selectedItem == null || selectedItem.IsDirectory)
             {
-                MessageBox.Show("Выберите файл для скачивания");
+                MessageBox.Show("Выберите файл для скачивания", "Внимание", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
             try
             {
                 var saveDialog = new SaveFileDialog();
-                saveDialog.FileName = selectedItem.Name; 
+                saveDialog.FileName = selectedItem.Name;
                 saveDialog.Filter = "Все файлы (*.*)|*.*";
 
                 if (saveDialog.ShowDialog() == true)
                 {
-                    string command = $"get {selectedItem.FullName}";
+                    string command = $"get {selectedItem.Name}";
                     string response = await SendCommandToServer(command);
 
                     if (response.StartsWith("file:"))
@@ -186,23 +199,33 @@ namespace WpfClient
                             string fileDataJson = response.Substring(5);
                             byte[] fileData = JsonConvert.DeserializeObject<byte[]>(fileDataJson);
                             File.WriteAllBytes(saveDialog.FileName, fileData);
-                            MessageBox.Show($"Файл {selectedItem.Name} успешно скачан в {saveDialog.FileName}");
+                            MessageBox.Show($"Файл {selectedItem.Name} успешно скачан в {saveDialog.FileName}",
+                                "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
                             UpdateStatus($"Файл {selectedItem.Name} скачан");
                         }
                         catch (Exception jsonEx)
                         {
-                            MessageBox.Show($"Ошибка обработки файла: {jsonEx.Message}");
+                            MessageBox.Show($"Ошибка обработки файла: {jsonEx.Message}",
+                                "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
                         }
+                    }
+                    else if (response.StartsWith("message:"))
+                    {
+                        string errorMessage = response.Substring(8);
+                        MessageBox.Show($"Ошибка скачивания: {errorMessage}",
+                            "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
                     }
                     else
                     {
-                        MessageBox.Show("Ошибка скачивания: " + response);
+                        MessageBox.Show($"Неизвестный ответ от сервера: {response}",
+                            "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
                     }
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка скачивания: {ex.Message}");
+                MessageBox.Show($"Ошибка скачивания: {ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
         private async void btnUpload_Click(object sender, RoutedEventArgs e)
@@ -247,6 +270,10 @@ namespace WpfClient
                 {
                     await ParseAndDisplayFiles(response);
                 }
+                else
+                {
+                    MessageBox.Show("Ошибка обновления: " + response);
+                }
             }
             catch (Exception ex)
             {
@@ -262,28 +289,24 @@ namespace WpfClient
                 List<string> files = JsonConvert.DeserializeObject<List<string>>(jsonData);
 
                 lstFiles.Items.Clear();
-                if (pathHistory.Count > 1)
-                {
-                    lstFiles.Items.Add(new FileItem("..", true));
-                }
+                lstFiles.Items.Add(new FileItem("..", true) { FullName = ".." });
 
                 foreach (string file in files)
                 {
                     bool isDirectory = file.EndsWith("/");
                     string fullName = file;
                     if (string.IsNullOrEmpty(fullName) || fullName == "/") continue;
-                    if (fullName.StartsWith("/"))
-                        fullName = fullName.Substring(1);
+                    if (isDirectory && fullName.EndsWith("/"))
+                        fullName = fullName.Substring(0, fullName.Length - 1);
 
-                    lstFiles.Items.Add(new FileItem(fullName, isDirectory));
+                    lstFiles.Items.Add(new FileItem(fullName, isDirectory) { FullName = fullName });
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка парсинга файлов: {ex.Message}");
+                MessageBox.Show($"Ошибка парсинга файлов: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-
         private async System.Threading.Tasks.Task<string> SendCommandToServer(string message)
         {
             try
